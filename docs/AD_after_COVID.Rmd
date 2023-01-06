@@ -1,0 +1,403 @@
+---
+title: "The Effect of Coronavirus on US Academic Decathlon School Programs"
+author: "Wrik Chakrabarti"
+date: "12/19/2022"
+output:  
+  rmdformats::robobook:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Consequences of a Pandemic
+
+As 2022 comes to an end (at the time of me writing this) and the dust finally settles from the chaos of two years ago when the COVID-19 pandemic momentarily obliterated daily life, the past seems certain enough that we can sit down and make sense of it all. 
+
+Of course, the pandemic is still in full swing, but vaccines have been circulated, many countries have eradicated the virus, and lock downs, at least in the United States, are a fairly recent memory. What's more important is the collection of data - in a rather cold sense, the pandemic could not have come at a better time. 
+
+The fields of data collection, optimization, and analysis are bursting with innovation and human capital - supporting technology is racing no slower. This trend in human progress coupled with a disruptive global event resulted in a plethora of information to analyze. The data itself is just data - but within lies a gold mine of information about what marks such a wide-scale event left on us, individually and as a people.
+
+## COVID and Education 
+
+One of the most apparently affected sectors of society in the United States affected by all aspects of the pandemic - government lock downs, infection rates, insufficient funding - was the public school system. The first COVID case in the US was in January 2020, and by mid March, many schools went completely online - a medium largely untested in a classroom environment - and engagement, grades, and overall test scores dropped dramatically. Many extracurricular events were also cancelled outright. 
+
+My pandemic experience included having to switch schools at the twilight of a BS in Physics at Purdue University due to lack of classes available and price, then floundering for half a year before I found a better academic and career path. This led me to want to understand the effect COVID has had on the trajectory of others' scholastic careers. Originally I was only interested in the effects of financial stress - my father had lost his job and I had no job at the time either - but tutoring part time and being face to face with students who'd spent their freshman and sophomore years in a pandemic piqued my interest about the impact of COVID on public school.
+
+## Academic Decathlon 
+
+I decided to start my investigation in home territory - in high school I participated in an extracurricular event called Academic Decathlon. Academic Decathlon is a national competition in which teams of 9 stratified in 3 divisions by GPA compete against each other and as teams across 10 different types of examinations. 
+
+The program is special to me for quite a few reasons - it's largely responsible for the person I am now and the friends I have. It's also got a beautiful wiki repository of score history from every year's national competition, down to the regional level (we'll get to it in a bit but [if you're impatient](#process)).
+
+Academic Decathlon suffered a pretty massive blow the year the pandemic started. In 2020, all state events went completely online, and some states, particularly Pennsylvania, cancelled their state event entirely. 
+
+By 2021 and 2022, however, the national tournament was held in-person, and people were attending states events again. 
+
+The examinations are scored on a 0 - 1000 scaling, so the maximum amount of points each student can achieve is 10,000. While individual scores are very important and individual awards are a large part of the event, scores of each student on a team are compiled into a school score to rank against other schools. Since there are 9 members on a team, the total a school can achieve is 54,000.   
+
+# Preparating and preprocessing {#process}
+
+As I mentioned above, Academic Decathlon keeps fairly immaculate records on a wiki that made it invitingly straightforward to pull data from. 
+
+Here is the link if you want to play around [with it.](https://acadecscores.gilslotd.com/wiki/State)
+
+I used python to pull and preprocess the information. This was accomplished in two parts:
+
+## **Part 1:** Pull data from wiki:
+This was done using BeautifulSoup, a supremely useful python package that handles HTML content, generally used to pull text from web pages. 
+
+Deciding to start at 2014, I navigated to each year's States page (ie. the page for [2014](https://acadecscores.gilslotd.com/wiki/State/2014)), stopping at the most recent page at 2022, and used BeautifulSoup to pull the tables from the wiki. 
+
+If you're interested in the code for that, you can check it out here.
+
+If you'd like to learn more about BeautifulSoup, you can do that here. 
+
+## **Part 2:** Preprocessing the data:
+
+The data itself is two-fold - I scraped and rearranged both state scores tables and student scores tables, resulting in a schools data frame containing columns **Year** (that the score was recorded, from 2014-2022), **State** (of the school scored), **School** (name of school), and the compiled team **Score** (out of 52,000). 
+
+The students data frame contains the same, along with the **Name** of the student and the **Division** they competed in that year. 
+  
+Data preparation is a large part of R's functionality, but I wanted to do all of my preprocessing in python. It seemed simpler to focus my R use on visualization and report writing, and I've always preferred python when venturing into the unknown.
+
+The substantial number of little challenges these datasets revealed made me glad I did. Here are some of the main ones for anyone trying this at home: 
+
+  + `Strange values` : 
+  
+  The **Score** column on both datasets had two or three errant values that I just gave up on, opened the excel file, and corrected. (They were typos) 
+  
+  + `2020's online exam` : 
+  
+2020's online exam had only 8 events, with a negligible number of schools recording scores a 10-event option. This resulted in two new columns being created, **8-Event** and **10-Event**, with null values for everything besides 2020's entries (with the opposite happening for the original **Score** column). 
+
+Since my interest lay in the overall trend of scores and attendance from earlier years to 2022, I decided to drop the **10-Event** column, and multiply the **8-Event** scores columns by 5/4 (proportionally increase each score to a 0-52,000 scale), and save that to the **Score** column so I'd have everything in one place. 
+
+  + `Data types of Scores` : 
+
+Some years had scores saved as string objects, others as float objects, and still others as int objects. This included stripping commas and brackets away, and casting the score type as a float object. 
+
+If you'd like to check out the code, you can do that here. 
+
+## The Final Product {.tabset}
+
+### `Schools`
+
+```{r message=FALSE, warning=FALSE}
+## Imports 
+library(tidyverse)
+library(readr)
+
+## Read in schools data
+schools <- read_csv('new_schools.csv')
+
+## Display table 
+schools %>% select(School, State, Score, Year) %>% head() %>% knitr::kable()
+
+```
+
+Scores are seemingly on a 52,000 scale so that checks out. 
+
+### `Students`
+
+```{r message=FALSE, warning=FALSE}
+
+## Read in students data
+students <- read_csv('new_students.csv')
+
+## Display table
+students %>% select(Student, School, State, Score, Year) %>% head() %>% knitr::kable()
+```
+
+Likewise, scores here seem to top out near 1000 so we're good to go. 
+
+# Attendance
+
+Let's start looking at overall attendance - the number of schools that showed up to their respective state competitions each year. We'll start on a macro scale and work our way to more specific conclusions. 
+
+## Overall States Attendance Per Year {.tabset}
+
+### `Table` 
+```{r message=FALSE, warning=FALSE}
+## Create and display table 
+schools %>% group_by(Year) %>% summarize(Attendance = n()) %>% head(10) %>% knitr::kable()
+
+```
+
+### `Plot`
+
+```{r message=FALSE, warning=FALSE}
+library(plotly)
+library(ggthemes)
+library(ggrepel)
+
+## Create table 
+att_by_year = schools %>% group_by(Year) %>% summarize(Attendance = n())
+
+## Create plot object
+p <- ggplot(att_by_year, aes(x=as.factor(Year), y=Attendance)) +
+  geom_bar(stat='identity') + theme_excel_new()
+
+## Display plot
+ggplotly(p)
+
+```
+
+## Overall States Attendance Per Year - **Conclusions**
+
+Though there's clearly a dip between 2019 and 2022, a fascinating information point is the staggering spike of attendance in 2016 (coincidentally my senior year of high school). Attendance dropped significantly afterwards, though it remained markedly higher than pre-2016 levels. 
+
+However, after 2020's (understandable) nadir, 2022 failed to bounce back to even 2014's level, the lowest point in the plot after itself. 
+
+This is also supported by the downward trajectory of attendance between 2021 and 2022. The pandemic seems to have catalyzed a gradual reduction of participation. *Is this across the board or regionally located?* 
+
+## Attendance by State {.tabset}
+
+I found throughout the data frame that there were many states which consistently recorded fewer than 9 entries. To avoid over-complication, I grouped those states into an *Other* category. Surprisingly, only four states survived the segregation - Texas, California, Arizona, and Pennsylvania. *This is definitely something to note going forward.* 
+
+### `States Attendance Average Above 9`
+
+```{r message=FALSE, warning=FALSE}
+## Get table of total attendance
+schools %>% group_by(State) %>% summarize(Attendance = n()) %>%
+  mutate(Mean_Attendance = Attendance/9) %>% filter(Mean_Attendance > 9) %>% knitr::kable()
+```
+
+### `Attendance by State Per Year`
+
+```{r message=FALSE, warning=FALSE}
+## Creating category column
+selected_states <- c('California','Texas','Arizona','Pennsylvania')
+schools <- schools %>% mutate(category = if_else(State %in% selected_states, State, 'Other'))
+
+## School attendance by year 
+s_14 <- schools %>% filter(Year==2014) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_15 <- schools %>% filter(Year==2015) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_16 <- schools %>% filter(Year==2016) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_17 <- schools %>% filter(Year==2017) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_18 <- schools %>% filter(Year==2018) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_19 <- schools %>% filter(Year==2019) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_20 <- schools %>% filter(Year==2020) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_21 <- schools %>% filter(Year==2021) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+s_22 <- schools %>% filter(Year==2022) %>% group_by(category) %>% summarize(Year,attendance=n()) %>% distinct()
+attendance_state_year <- rbind(s_15, s_17, s_19, s_20, s_22)
+
+## Plot object
+p <- ggplot(attendance_state_year, aes(fill=category, y=attendance, x=as.factor(Year))) + 
+  geom_bar(stat='identity') + theme_excel_new()
+
+## Display plot
+ggplotly(p)
+```
+
+## Attendance by State Per Year - **Conclusions** 
+
+It seems like our hypothesis has some grounds to stand on. **The lion's share of attendance was depleted from the "Other" sector**. **Texas**, in fact, experienced an increase in attendance. **California** was relatively unscathed, save for 2020. 
+
+**Pennsylvania**, despite having zero attendance in 2020 (the state cancelled its event), managed to hold on to all but two teams. 
+
+**Attendance likely follows priority and funding**. It stands to reason that states not nearly as invested in Academic Decathlon as a program for their schools decided the risk wasn't worth it, and in many states' cases, that sentiment hasn't recovered. 
+
+Funding for school programs that aren't sports falling by the wayside is a frequently told story in the world of education, and this phenomenon seems a likely reason for states in the **Other** category to relinquish their share of the attendance pie. 
+
+# Performance 
+
+## Performance by division across selected years 
+
+```{r message=FALSE, warning=FALSE}
+## Creating data frames for 2016-2022 even years 
+## and recording mean score per division for each year\
+s_16 <- students %>% filter(Year=='2016') %>% group_by(Division) %>% 
+  summarize(Year = Year, Mean_score = mean(Score)) %>%
+  distinct()
+s_18 <- students %>% filter(Year=='2018') %>% group_by(Division) %>% 
+  summarize(Year = Year, Mean_score = mean(Score)) %>%
+  distinct()
+s_20 <- students %>% filter(Year=='2020') %>% group_by(Division) %>% 
+  summarize(Year = Year, Mean_score = mean(Score)) %>%
+  distinct()
+s_22 <- students %>% filter(Year=='2022') %>% group_by(Division) %>% 
+  summarize(Year = Year, Mean_score = mean(Score)) %>%
+  distinct()
+s_total1 <- rbind(s_16, s_18, s_20, s_22)
+
+## Plot object
+p2 <- ggplot(s_total1, aes(fill=Division, y=Mean_score, x=as.factor(Year))) + 
+  geom_bar(position='dodge', stat='identity') + 
+  geom_line(y=s_total1$Mean_score, group=1) + theme_excel_new()
+
+## Display plot
+ggplotly(p2)
+
+```
+
+As a whole, all divisions **performed on a worse level in 2020** than in any other year, and the bounce back up in score in 2021 just barely approaches each division's 2014 averages. 
+
+Honors, Scholastic, and Varsity competitors are students with a cumulative GPA average cutoff in descending order respectively. Therefore Scholastic students are expected to perform better than Varsities, and Honors better than both, though that's often not the case. 
+
+That's the reason behind the mean score disparity between divisions. However, this doesn't say too much about the overall spread of individual scores. Let's look a little deeper.
+
+I chose to analyze the spread of individual scores by division during **2018** and **2022** to get a clear picture of the before and after of score differences. 
+
+## Scores Distribution 2018 vs 2022 by Division {.tabset}
+
+```{r message=FALSE, warning=FALSE}
+## Separate Divisions 2018
+honors_18 <- students %>% filter(Year=='2018') %>% filter(Division=='Honors')
+scholastic_18 <- students %>% filter(Year=='2018') %>% filter(Division=='Scholastic')
+varsity_18 <- students %>% filter(Year=='2018') %>% filter(Division=='Varsity')
+
+## Separate Divisions 2022
+honors_22 <- students %>% filter(Year=='2022') %>% filter(Division=='Honors')
+scholastic_22 <- students %>% filter(Year=='2022') %>% filter(Division=='Scholastic')
+varsity_22 <- students %>% filter(Year=='2022') %>% filter(Division=='Varsity')
+
+
+```
+
+### `Honors`
+
+```{r message=FALSE, warning=FALSE}
+## Combine divisions 2018
+honors_2218 <- rbind(honors_18, honors_22)
+
+## Plot object
+p4 <- ggplot(honors_2218, aes(x=Score, fill=as.factor(Year))) + geom_density(alpha=0.4) + theme_excel_new()
+
+## display plot()
+ggplotly(p4)
+```
+
+### `Scholastic`
+
+```{r message=FALSE, warning=FALSE}
+## Combine divisions 2018
+scholastic_2218 <- rbind(scholastic_18, scholastic_22)
+
+## Plot object
+p5 <- ggplot(scholastic_2218, aes(x=Score, fill=as.factor(Year))) + geom_density(alpha=0.4) + theme_excel_new()
+
+## display plot()
+ggplotly(p5)
+```
+
+### `Varsity`
+
+```{r message=FALSE, warning=FALSE}
+## Combine divisions 2018
+varsity_2218 <- rbind(varsity_18, varsity_22)
+
+## Plot object
+p6 <- ggplot(varsity_2218, aes(x=Score, fill=as.factor(Year))) + geom_density(alpha=0.4) + theme_excel_new()
+
+## display plot()
+ggplotly(p6)
+```
+
+## Number of High Scorers Stratified by Region - 2018 vs 2022 {.tabset}
+
+```{r message=FALSE, warning=FALSE}
+## Creating table for high scoring students (scored above the mean each year)
+## 18) H: 8073.9, S: 7541.1, V: 7255.235
+h_upper_18 <- honors_18 %>% filter(Score > 8073.9)
+s_upper_18 <- scholastic_18 %>% filter(Score > 7541.1)
+v_upper_18 <- varsity_18 %>% filter(Score > 7255.235)
+high_scorers_18 <- rbind(h_upper_18, s_upper_18, v_upper_18)
+
+## 22) H: 7960.7, S: 7300.5, V: 6932.3
+h_upper_22 <- honors_22 %>% filter(Score > 7960.7)
+s_upper_22 <- scholastic_22 %>% filter(Score > 7300.5)
+v_upper_22 <- varsity_22 %>% filter(Score > 6932.3)
+high_scorers_22 <- rbind(h_upper_22, s_upper_22, v_upper_22)
+
+## Creating category variable for each
+selected_states <- c('California','Texas','Arizona','Pennsylvania')
+high_scorers_18 <- high_scorers_18 %>% mutate(Category = if_else(State %in% selected_states, State, 'Other'))
+high_scorers_22 <- high_scorers_22 %>% mutate(Category = if_else(State %in% selected_states, State, 'Other'))
+
+```
+
+### `Mean Score Per Divison Overall`
+```{r message=FALSE, warning=FALSE}
+
+students %>% group_by(Division) %>% summarize(Mean_Score = mean(Score)) %>% knitr::kable()
+```
+
+I separated students into groups of "high scorers" and low scorers based on if the scored above the absolute mean of their division each year. I'm going to investigate where high scorers came from in 2018 and 2020. 
+
+### `2018`
+```{r message=FALSE, warning=FALSE}
+## 2018 pie chart table
+num_hs_18 <- high_scorers_18 %>% group_by(Category) %>% summarize(Count = n())
+
+## Aux DF for label position
+for_count_pie_18 <- num_hs_18 %>%  
+  mutate(csum = rev(cumsum(rev(Count))), 
+         pos = Count/2 + lead(csum, 1), 
+         pos = if_else(is.na(pos), Count/2, pos))
+
+## Plot object
+ggplot(num_hs_18, aes(x="", y=Count, fill=Category)) + 
+  geom_col(width = 1, color = 1) +  
+  coord_polar(theta = "y", clip="on") +  
+  scale_fill_brewer(palette = "Set1") +  
+  labs(title="Users by frequency of use - Count (out of 24)") + 
+  labs(x=" ") + 
+  geom_label_repel(data=for_count_pie_18, aes(y=pos, label=paste0(Count)), 
+                   size=4.5, nudge_x=1, show.legend=FALSE,alpha=0.85) +  
+  guides(fill=guide_legend(title = "User Type")) +  
+  theme_excel_new() ## generate chart
+```
+
+We see representation from all of the main big states, but **Texas** and **California** dominate the chart, as expected given the states' sizable consistent event participation
+
+### `2022`
+```{r message=FALSE, warning=FALSE}
+## 2022 pie chart table
+num_hs_22 <- high_scorers_22 %>% group_by(Category) %>% summarize(Count = n())
+
+## Aux DF for label position
+for_count_pie_22 <- num_hs_22 %>%  
+  mutate(csum = rev(cumsum(rev(Count))), 
+         pos = Count/2 + lead(csum, 1), 
+         pos = if_else(is.na(pos), Count/2, pos))
+
+## Plot object
+ggplot(num_hs_22, aes(x="", y=Count, fill=Category)) + 
+  geom_col(width = 1, color = 1) +  
+  coord_polar(theta = "y", clip="on") +  
+  scale_fill_brewer(palette = "Set1") +  
+  labs(title="Users by frequency of use - Count (out of 24)") + 
+  labs(x=" ") + 
+  geom_label_repel(data=for_count_pie_22, aes(y=pos, label=paste0(Count)), 
+                   size=4.5, nudge_x=1, show.legend=FALSE,alpha=0.85) +  
+  guides(fill=guide_legend(title = "User Type")) +  
+  theme_excel_new() ## generate chart
+```
+
+**Texas** had an overwhelmingly large amount of competitors in the high scorer category. **California** shrunk considerably, as did the **Other** group. 
+
+## 2018 vs 2022 - **Conclusions** 
+
+The density plots above show a clear drop in performance between **2018** and **2022** for the vast majority of students in each division - the peak of each division's **2022** curve was farther back than that of its corresponding **2018** curve. 
+
+The pie chart suggests that a large majority of high scorers in 2018 who were not high scorers in 2022 came from **California** and the **Other** category. 
+
+Surprisingly, as all other teams (save for Pennsylvania and Arizona who seem to be holding on), all states participating in Academic Decathlon between 2018 and 2022 - with the exception of Texas. Ironically, judging by the results, this pandemic is one of the best things to ever happen to Texas Academic Decathlon. 
+
+Historically California has always held an upper hand on Texas's competition but we seem to be pulling away (with the help of a global tragedy, evidently). This could be attributed to the fact that Academic Decathlon is a huge program in Texas, also the reason for its increased attendance the last four years. 
+# Final Conclusions
+
+Coronavirus not only impacted Academic Decathlon's ability to host state events, but it also put the program on the chopping block for a lot of school and state systems. Attendance as a whole dropped by at least a third two years later in all places but Texas and Pennsylvania (save for their absence in 2020).
+
+The pandemic also seems to have had a lasting impact on competitor performance across the board - 2022 saw a score distribution that peaked lower for all divisions than just four years ago, whereas the general trend was one of stasis.
+
+It can be concluded to a certain degree that COVID has definitely left a lasting effect on the Academic Decathlon program and sent attendance and performance for state programs into a downward trend that existed since 2016, exacerbated by the pandemic... Unless you're Texas.
+
+Texas is an enigma - to understand why it thrived in a situation where so many programs suffered would take far more than this report. That being said, as an alumnus of that program, the hard work I've seen coaches, administrators, and organizers put in to host state events is well deserving for every increase in attendance and score witnessed by Texas here. 
+
+More logically, however, Texas has a massive amount of public funding for the program. California has schools in which Academic Decathlon is just as important if not more, but the heavy hitter schools are all private - they handle Academic Decathlon program participation on their own accord.
+
+On a broader scale, it seems more certain now that the public education sector was definitely a casualty of reactionary planning against the tide of the virus. Administrators were forced to make certain things expendable, and for many states, Academic Decathlon just wasn't important enough. 
+
